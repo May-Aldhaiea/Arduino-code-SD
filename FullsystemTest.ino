@@ -39,6 +39,9 @@ const int csH = 14; // heating plate cs
 const int csSub = 16; // substrate cs
 const int csAir = 18; // vantage air temp cs 
 
+// variables
+int stage = 1; // stage value should go from 1 to 5
+
 void setup() {
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
   // suction cup
