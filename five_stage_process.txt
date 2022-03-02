@@ -1,0 +1,53 @@
+///////////////// stage 1 ///////////////////////////
+setup
+turn on solenoids (push) (suction cup)
+turn on solenoid (push) (clamps)
+heater at target temprature (roughly around 110C) (takes around 8 minute)
+end setup
+wait for sensor to turn on to recieve substrate from EFEM (5 seconds)
+turn on vaccuum 
+solenoid off (pull)
+comunnicate to the UI
+stage 2
+
+
+///////////////// stage 2 ///////////////////////////
+turn off solenoid (pull) (clamps)
+turn on the heater to 120.5C
+use thermocouples to verify temprature
+tell vantage to dispense once heat is verified (200/515)
+communicate to the UI
+stage 3
+
+
+
+
+///////////////// stage 3 ///////////////////////////
+turn on the lead screw to move to position 2
+wait for SMS sensor to verify fixture is in position 2
+communicate to the vantage to complete the dispensing (move an extra 320)
+heater off (reach 60C)
+communicate to the UI
+stage 4
+
+
+
+
+
+
+///////////////// stage 4 ///////////////////////////
+turn on the lead screw to move to position 
+use SMS sensor to verify fixture is in position 1
+thermocouple verify the temprature cooled to 60C
+communicate to UI
+stage 5
+
+
+
+///////////////// stage 5 ///////////////////////////
+verify temp and position
+complete the process
+suction solenoid up (push)
+vaccuum off
+clamps off
+tell ui the process is done

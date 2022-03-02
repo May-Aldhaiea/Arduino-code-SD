@@ -1,0 +1,12 @@
+// push in the stage before the substrate is in the fixture
+// sensor detects the substrate
+// push in the beginning aka extend
+// pull 
+// if the pressure switch == high then we reached the targeted psi
+
+
+/// pressure switch mechanism
+// if pressure switch == high then turn off the vacuum === PSI > 20
+// if pressure switch == low then turn on the vaccuum ==== psi < 20
+/repeat
+/// end
