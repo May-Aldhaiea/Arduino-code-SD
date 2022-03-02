@@ -67,6 +67,13 @@ void setup() {
   pinMode(csSub, INPUT);
   pinMode(csAir, INPUT);
 
+  // setup phase
+  // turn on solonoid for suction cup
+  digitalWrite(solonoid1, HIGH);
+  //turn on solonoid for clamps
+  digitalWrite(leftSLpush, HIGH);
+  digitalWrite(rightSLpush, HIGH);
+  // heater on
 }
 
 void loop() {
