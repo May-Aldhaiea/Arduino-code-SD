@@ -41,12 +41,31 @@ const int csAir = 18; // vantage air temp cs
 
 void setup() {
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
+  // suction cup
   pinMode(solonoid1, OUTPUT); // suction cups
   pinMode(solonoid2, OUTPUT);// put your setup code here, to run once:
+  pinMode(NPNsuc, INPUT);
+  pinMode(Vsolenoid, OUTPUT);
+  
+  // lead screw
   pinMode(motorCW, OUTPUT);
   pinMode(motorCCW, OUTPUT);
   pinMode(SMS1, INPUT);
-  pinMode(SMS2, INPUT); 
+  pinMode(SMS2, INPUT);
+   
+  //clamps
+  pinMode(leftSLpush, OUTPUT);
+  pinMode(leftSLpull, OUTPUT);
+  pinMode(rightSLpush, OUTPUT);
+  pinMode(rightSLpull, OUTPUT);
+  pinMode(NPN1,INPUT);
+  pinMode(NPN2,INPUT);
+
+  // heater
+  pinMode(SSR, OUTPUT);
+  pinMode(csH, INPUT);
+  pinMode(csSub, INPUT);
+  pinMode(csAir, INPUT);
 
 }
 
