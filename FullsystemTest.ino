@@ -1,3 +1,5 @@
+#include <MAX31855.h> // Include MAX31855 Sensor library
+
 // variables
 const int baudRate = 9600; //constant integer to set the baud rate for serial monitor
 int stage = 1; // stage value should go from 1 to 5
@@ -38,10 +40,18 @@ const int SSR = 8; // solid state relay
 const int csH = 14; // heating plate cs
 const int csSub = 16; // substrate cs
 const int csAir = 18; // vantage air temp cs 
+const uint8_t  SPI_MISO         =   MISO; ///< Master-In, Slave-Out PIN for SPI
+const uint8_t  SPI_SYSTEM_CLOCK =    SCK; ///< System Clock PIN for SPI
 float temprature = 0.0;
+MAX31855_Class hMAX31855; ///< Create an instance of MAX31855 for heating plate
+MAX31855_Class subMAX31855; ///< Create an instance of MAX31855 for substrate
+MAX31855_Class airMAX31855; ///< Create an instance of MAX31855 for the air temprature
 
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
+  #ifdef  __AVR_ATmega32U4__  // If this is a 32U4 processor, then wait 3 seconds for the interface to initialize
+    delay(3000);
+  #endif
   // suction cup
   pinMode(solonoid1, OUTPUT); // suction cups
   pinMode(solonoid2, OUTPUT);// put your setup code here, to run once:
@@ -62,9 +72,24 @@ void setup() { // input for sensors, output for motors and control units
 
   // heater
   pinMode(SSR, OUTPUT);
-  pinMode(csH, INPUT);
-  pinMode(csSub, INPUT);
-  pinMode(csAir, INPUT);
+  //pinMode(csH, INPUT);
+  //pinMode(csSub, INPUT);
+  //pinMode(csAir, INPUT);
+  while (!hMAX31855.begin(csH))
+  {
+    Serial.println(F("Unable to start csH MAX31855. Waiting 3 seconds."));
+    delay(3000);
+  } // of loop until device is located
+  while (!subMAX31855.begin(csSub))
+  {
+    Serial.println(F("Unable to start csSub MAX31855. Waiting 3 seconds."));
+    delay(3000);
+  } // of loop until device is located
+  while (!airMAX31855.begin(csAir))
+  {
+    Serial.println(F("Unable to start csAir MAX31855. Waiting 3 seconds."));
+    delay(3000);
+  } // of loop until device is located
 
   // setup phase
   // turn on solonoid for suction cup
@@ -80,6 +105,18 @@ void setup() { // input for sensors, output for motors and control units
 }
 
 void loop() {
+  int32_t hAmbientTemperature = hMAX31855.readAmbient(); // retrieve hMAX31855 die ambient temperature
+  int32_t hProbeTemperature   = hMAX31855.readProbe();   // retrieve thermocouple probe temp
+  uint8_t hFaultCode          = hMAX31855.fault();       // retrieve any error codes
+  
+  int32_t subAmbientTemperature = subMAX31855.readAmbient(); // retrieve subMAX31855 die ambient temperature
+  int32_t subProbeTemperature   = subMAX31855.readProbe();   // retrieve thermocouple probe temp
+  uint8_t subFaultCode          = subMAX31855.fault();       // retrieve any error codes
+  
+  int32_t airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
+  int32_t airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
+  uint8_t airFaultCode          = airMAX31855.fault();       // retrieve any error codes
+  
 switch (stage){
   case 1:
   
