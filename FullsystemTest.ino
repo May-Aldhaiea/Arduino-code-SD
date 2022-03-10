@@ -3,6 +3,8 @@
 // variables
 const int baudRate = 9600; //constant integer to set the baud rate for serial monitor
 int stage = 1; // stage value should go from 1 to 5
+const int PES = 28; // photoelectric sensor pin
+bool recieved = false; // checks if the substrate has been recieved 
 
 // clamps pins
 const int clampSLpush = 5; // clamp push
@@ -24,6 +26,8 @@ const int sensorreadDelay = 250; //constant integer to set the sensor read delay
 float pressureValue = 0; //variable to store the value coming from the pressure transducer
 bool CheckSolonoid = false; // a state diagram to know if the suction cup are on or off
 bool vaccuum = false; // vaccuum state variable
+bool psi = false; // checks if the target psi is reached
+int pressure = 0;
 
 // lead screw pins
 const int motorCW = 3; // clockwise motor
@@ -52,6 +56,7 @@ void setup() { // input for sensors, output for motors and control units
   #ifdef  __AVR_ATmega32U4__  // If this is a 32U4 processor, then wait 3 seconds for the interface to initialize
     delay(3000);
   #endif
+  pinMode(PES,INPUT); 
   // suction cup
   pinMode(solonoid1, OUTPUT); // suction cups
   pinMode(solonoid2, OUTPUT);// put your setup code here, to run once:
@@ -116,17 +121,39 @@ void loop() {
   int32_t airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
   int32_t airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
   uint8_t airFaultCode          = airMAX31855.fault();       // retrieve any error codes
-  
+  temprature = (float)subProbeTemperature/1000; 
 switch (stage){
   case 1:
+  while (recieved == false) // wait for the substrate to come from the EFEM
+  {
+    recieved = digitalRead(PES); // check if substrate been recieved
+    delay(1000);
+  }
+  while (psi == false) // get the vacuum to the proper PSI
+  {
+    psi = digitalRead(NPNsuc);
+    pressure = pressure + 1;
+    analogWrite(Vsolenoid, pressure);
+    delay(5);
+  }
+  digitalWrite(solonoid1, LOW);
+  delay(100);
+  digitalWrite(solonoid2, HIGH);
+  stage = 2;
   
   break;
   case 2:
   digitalWrite(clampSLpush, LOW);
   delay(100);
   digitalWrite(clampSLpull, HIGH);
-  
-  
+  while (temprature < 120.5)
+  {
+    // implement heating mechanism
+    temprature = (float)subProbeTemperature/1000; 
+  }
+  // add temprature protocol here
+  // vantage protocol
+  stage = 3;
   break;
   case 3:
   analogWrite(motorCW, RPM);
@@ -135,6 +162,11 @@ switch (stage){
     pos2 = digitalRead(SMS2);
   }
   digitalWrite(motorCW, LOW);
+  while (temprature > 60)
+  {
+    // implement temprature control here
+    temprature = (float)subProbeTemperature/1000; 
+  }
   if (pos2 == true && (temprature > 59.5 && temprature < 60.5)
   {
     //communicate with UI
