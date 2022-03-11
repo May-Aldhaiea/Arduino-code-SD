@@ -50,6 +50,7 @@ float temprature = 0.0;
 MAX31855_Class hMAX31855; ///< Create an instance of MAX31855 for heating plate
 MAX31855_Class subMAX31855; ///< Create an instance of MAX31855 for substrate
 MAX31855_Class airMAX31855; ///< Create an instance of MAX31855 for the air temprature
+int steadyHeat = 44; // analog value for the pwm for keeping the temprature at a steady rate
 
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
