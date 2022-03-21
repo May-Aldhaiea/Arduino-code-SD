@@ -2,8 +2,8 @@
 
 // variables
 const int baudRate = 9600; //constant integer to set the baud rate for serial monitor
-int stage = 1; // stage value should go from 1 to 5
-const int PES = 28; // photoelectric sensor pin
+int stage = 0; // stage value should go from 1 to 5
+const int PES = 30; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
 
 // clamps pins
@@ -18,7 +18,8 @@ const int pressureInput = 11; //select the analog input pin for the pressure tra
 const int solonoid1 = 12; //suction cup push
 const int solonoid2 = 13; // suction cup pull
 const int NPNsuc = 7; // npn sensor for the suction cup
-const int Vsolenoid = 26; // vacuum solenoid 
+const int Vac1 = 26; // vacuum solenoid 
+const int Vac2 = 28; // vacuum solenoid 
 const int pressureZero = 102.4; //analog reading of pressure transducer at 0psi
 const int pressureMax = 921.6; //analog reading of pressure transducer at 100psi
 const int pressuretransducermaxPSI = 100; //psi value of transducer being used
@@ -27,7 +28,7 @@ float pressureValue = 0; //variable to store the value coming from the pressure 
 bool CheckSolonoid = false; // a state diagram to know if the suction cup are on or off
 bool vaccuum = false; // vaccuum state variable
 bool psi = false; // checks if the target psi is reached
-int pressure = 0;
+//int pressure = 0;
 
 // lead screw pins
 const int motorCW = 3; // clockwise motor
@@ -46,11 +47,16 @@ const int csSub = 16; // substrate cs
 const int csAir = 18; // vantage air temp cs 
 const uint8_t  SPI_MISO         =   MISO; ///< Master-In, Slave-Out PIN for SPI
 const uint8_t  SPI_SYSTEM_CLOCK =    SCK; ///< System Clock PIN for SPI
-float temprature = 0.0;
+float htemprature = 0.0;
+float subtemprature = 0.0;
+float airtemprature = 0.0;
 MAX31855_Class hMAX31855; ///< Create an instance of MAX31855 for heating plate
 MAX31855_Class subMAX31855; ///< Create an instance of MAX31855 for substrate
 MAX31855_Class airMAX31855; ///< Create an instance of MAX31855 for the air temprature
 int steadyHeat = 44; // analog value for the pwm for keeping the temprature at a steady rate
+int hErr = 1;
+int subErr = 1;
+int airErr = 1;
 
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
@@ -62,7 +68,8 @@ void setup() { // input for sensors, output for motors and control units
   pinMode(solonoid1, OUTPUT); // suction cups
   pinMode(solonoid2, OUTPUT);// put your setup code here, to run once:
   pinMode(NPNsuc, INPUT);
-  pinMode(Vsolenoid, OUTPUT);
+  pinMode(Vac1, OUTPUT);
+  pinMode(Vac2, OUTPUT);
   
   // lead screw
   pinMode(motorCW, OUTPUT);
@@ -107,7 +114,9 @@ void setup() { // input for sensors, output for motors and control units
   // lead screw setup
   pos1 = digitalRead(SMS1); // read sensor 1
   pos2 = digitalRead(SMS2); // read sensor 2
-  
+
+  // communicate to the vantage
+  stage = 1;
 }
 
 void loop() {
@@ -122,7 +131,49 @@ void loop() {
   int32_t airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
   int32_t airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
   uint8_t airFaultCode          = airMAX31855.fault();       // retrieve any error codes
-  temprature = (float)subProbeTemperature/1000; 
+
+  if ( subFaultCode )                                     // Display error code if present
+  {
+    subErr++;
+    if (subErr >= 4)
+    {
+      //protocol
+    }
+  }
+  else
+  {
+    subErr = 1;
+    subtemprature = (float)subProbeTemperature/1000;
+  }
+  
+  if ( hFaultCode )                                     // Display error code if present
+  {
+    hErr++;
+    if (hErr >= 4)
+    {
+      //protocol
+    }
+  }
+  else
+  {
+    hErr = 1;
+    htemprature = (float)hProbeTemperature/1000;     
+  }
+
+  if ( airFaultCode )                                     // Display error code if present
+  {
+    airErr++;
+    if (airErr >= 4)
+    {
+      //protocol
+    }
+  }
+  else
+  {
+    hErr = 1;
+    airtemprature = (float)airAmbientTemperature/1000;     
+  }
+  
 switch (stage){
   case 1:
   while (recieved == false) // wait for the substrate to come from the EFEM
@@ -130,13 +181,19 @@ switch (stage){
     recieved = digitalRead(PES); // check if substrate been recieved
     delay(1000);
   }
+  // open both vaccums
+  digitalWrite(Vac1,HIGH); 
+  delay(100);
+  digitalWrite(Vac2,HIGH);
   while (psi == false) // get the vacuum to the proper PSI
   {
     psi = digitalRead(NPNsuc);
-    pressure = pressure + 1;
-    analogWrite(Vsolenoid, pressure);
     delay(5);
   }
+  // turn off both vaccums
+  digitalWrite(Vac1,LOW); 
+  delay(100);
+  digitalWrite(Vac2,LOW);
   digitalWrite(solonoid1, LOW);
   delay(100);
   digitalWrite(solonoid2, HIGH);
@@ -193,6 +250,7 @@ switch (stage){
   digitalWrite(solonoid2, LOW);
   delay(100);
   digitalWrite(solonoid1, HIGH);
+  digitalWrite(Vac2,HIGH);
   digitalWrite(clampSLpull, LOW);
   delay(100);
   digitalWrite(clampSLpush, HIGH);
