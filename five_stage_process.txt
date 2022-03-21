@@ -5,7 +5,9 @@ turn on solenoid (push) (clamps)
 heater at target temprature (roughly around 110C) (takes around 8 minute)
 end setup
 wait for sensor to turn on to recieve substrate from EFEM (5 seconds)
-turn on vaccuum 
+turn on vaccuum (both vac1 and vac2)
+wait for PSI to be reached
+close both vac1 and vac2
 solenoid off (pull)
 comunnicate to the UI
 stage 2
@@ -36,7 +38,7 @@ stage 4
 
 
 ///////////////// stage 4 ///////////////////////////
-turn on the lead screw to move to position 
+turn on the lead screw to move to position 1
 use SMS sensor to verify fixture is in position 1
 thermocouple verify the temprature cooled to 60C
 communicate to UI
@@ -48,6 +50,6 @@ stage 5
 verify temp and position
 complete the process
 suction solenoid up (push)
-vaccuum off
+vaccuum off (open vac2)
 clamps off
 tell ui the process is done
