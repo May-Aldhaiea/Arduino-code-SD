@@ -3,7 +3,7 @@
 // variables
 const int baudRate = 9600; //constant integer to set the baud rate for serial monitor
 int stage = 0; // stage value should go from 1 to 5
-const int PES = 30; // photoelectric sensor pin
+const int PES = 28; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
 
 // clamps pins
@@ -11,15 +11,15 @@ const int clampSLpush = 5; // clamp push
 const int clampSLpull = 6; // clamp pull
 const int NPN1 = 1; // left side sensor
 const int NPN2 = 2; // right side sensor
-bool clamps = true; // a state diagram to know if the clamps are on or off
+bool Lclamps = true; // a state diagram to know if the left clamp is on or off
+bool Rclamps = true; // a state diagram to know if the right clamps is on or off
 
 // suction cup pins
 const int pressureInput = 11; //select the analog input pin for the pressure transducer
 const int solonoid1 = 12; //suction cup push
 const int solonoid2 = 13; // suction cup pull
 const int NPNsuc = 7; // npn sensor for the suction cup
-const int Vac1 = 26; // vacuum solenoid 
-const int Vac2 = 28; // vacuum solenoid 
+const int valve = 26; // valve for the vacuum  
 const int pressureZero = 102.4; //analog reading of pressure transducer at 0psi
 const int pressureMax = 921.6; //analog reading of pressure transducer at 100psi
 const int pressuretransducermaxPSI = 100; //psi value of transducer being used
@@ -68,8 +68,8 @@ void setup() { // input for sensors, output for motors and control units
   pinMode(solonoid1, OUTPUT); // suction cups
   pinMode(solonoid2, OUTPUT);// put your setup code here, to run once:
   pinMode(NPNsuc, INPUT);
-  pinMode(Vac1, OUTPUT);
-  pinMode(Vac2, OUTPUT);
+  pinMode(pressureInput, INPUT);
+  pinMode(valve, OUTPUT);
   
   // lead screw
   pinMode(motorCW, OUTPUT);
@@ -107,6 +107,12 @@ void setup() { // input for sensors, output for motors and control units
   // setup phase
   // turn on solonoid for suction cup
   digitalWrite(solonoid1, HIGH);
+  // wait for the fixture to go up
+  while (CheckSolonoid = false)
+  {
+    CheckSolonoid = digitalRead(NPNsuc);
+    delay(5);
+  }
   //turn on solonoid for clamps
   digitalWrite(clampSLpush, HIGH);
   // heater on
@@ -181,22 +187,24 @@ switch (stage){
     recieved = digitalRead(PES); // check if substrate been recieved
     delay(1000);
   }
-  // open both vaccums
-  digitalWrite(Vac1,HIGH); 
-  delay(100);
-  digitalWrite(Vac2,HIGH);
+  // open vaccum valve
+  digitalWrite(valve,HIGH); 
   while (psi == false) // get the vacuum to the proper PSI
   {
-    psi = digitalRead(NPNsuc);
+    psi = digitalRead(pressureInput);
     delay(5);
   }
-  // turn off both vaccums
-  digitalWrite(Vac1,LOW); 
-  delay(100);
-  digitalWrite(Vac2,LOW);
+  //lower fixture
   digitalWrite(solonoid1, LOW);
   delay(100);
   digitalWrite(solonoid2, HIGH);
+  CheckSolonoid = digitalRead(NPNsuc);
+  // wait for the solenoid to be down
+  while (CheckSolonoid = false)
+  {
+    CheckSolonoid = digitalRead(NPNsuc);
+    delay(5);
+  }
   stage = 2;
   
   break;
@@ -204,6 +212,21 @@ switch (stage){
   digitalWrite(clampSLpush, LOW);
   delay(100);
   digitalWrite(clampSLpull, HIGH);
+  Lclamps = digitalRead(NPN1);
+  Rclamps = digitalRead(NPN2);
+  // wait for the sensors to confirm that the clamps are down
+  while (Lclamps == false)
+  {
+    Lclamps = digitalRead(NPN1);
+    delay(5);
+  }
+  while (Rclamps == false)
+  {
+    Rclamps = digitalRead(NPN2);
+    delay(5);
+  }
+  // turn off the valve for the vacuum
+  digitalWrite(valve,LOW); 
   while (temprature < 120.5)
   {
     // implement heating mechanism
@@ -218,6 +241,7 @@ switch (stage){
   while (pos2 == 0)
   {
     pos2 = digitalRead(SMS2);
+    delay(5);
   }
   digitalWrite(motorCW, LOW);
   while (temprature > 60)
@@ -237,6 +261,7 @@ switch (stage){
   while (pos1 == 0)
   {
     pos1 = digitalRead(SMS1);
+    delay(5);
   }
   digitalWrite(motorCCW, LOW);
   if (pos1 == true && (temprature > 59.5 && temprature < 60.5)
@@ -247,14 +272,38 @@ switch (stage){
   
   break;
   case 5:
+  digitalWrite(valve,HIGH); 
+  while (psi == false) // get the vacuum to the proper PSI
+  {
+    psi = digitalRead(pressureInput);
+    delay(5);
+  }
   digitalWrite(solonoid2, LOW);
   delay(100);
   digitalWrite(solonoid1, HIGH);
-  digitalWrite(Vac2,HIGH);
   digitalWrite(clampSLpull, LOW);
   delay(100);
   digitalWrite(clampSLpush, HIGH);
-  
+  Lclamps = digitalRead(NPN1);
+  Rclamps = digitalRead(NPN2);
+  // wait for the sensors to confirm that the clamps are up
+  while (Lclamps == true)
+  {
+    Lclamps = digitalRead(NPN1);
+    delay(5);
+  }
+  while (Rclamps == true)
+  {
+    Rclamps = digitalRead(NPN2);
+    delay(5);
+  }
+  delay(500);
+  digitalWrite(valve,LOW); 
+  while (psi == true) // wait for the vacuum to turn off
+  {
+    psi = digitalRead(pressureInput);
+    delay(5);
+  }
   break;
 }
 delay(1000);
