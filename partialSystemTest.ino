@@ -3,7 +3,7 @@
 // general
 const int PES = 28; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
-
+int substrateReady = 0;
 
 // clamps pins
 const int clampSLpush = 5; // clamp push
@@ -41,7 +41,7 @@ void setup() //setup routine, runs once when system turned on or reset
   pinMode(valve, OUTPUT);
   
 
-  // valve
+  // clamps
   pinMode(clampSLpush, OUTPUT);
   pinMode(clampSLpull, OUTPUT);
   pinMode(NPN1,INPUT);
@@ -54,26 +54,49 @@ void setup() //setup routine, runs once when system turned on or reset
     CheckSolonoid = digitalRead(NPNsuc);
     delay(5);
   }
+  //turn on solonoid for clamps
+  digitalWrite(clampSLpush, HIGH);
   stage = 1;
+  delay(5000);
 }
 
 void loop() //loop routine runs over and over again forever
 {
+  /*recieved = digitalRead(PES);
+  if (PES == false)
+  {
+    digitalWrite(valve,false); 
+  }else if (PES == true);
+  {
+    digitalWrite(valve,HIGH); 
+  }*/
+  
   switch(stage)
   {
     case 1:
     recieved = digitalRead(PES);
-    while (recieved == false) // wait for the substrate to come from the EFEM
+    Serial.println("waiting for substrate");
+    while (substrateReady < 5) // wait for the substrate to come from the EFEM
     {
       recieved = digitalRead(PES); // check if substrate been recieved
+      if (recieved == true)
+      {
+        substrateReady++;
+      }else
+      {
+        substrateReady = 0;
+      }
       delay(1000);
     }
+    substrateReady = 0;
       // open vaccum valve
     digitalWrite(valve,HIGH); 
-    while (psi == false) // get the vacuum to the proper PSI
+    psi = digitalRead(pressureInput);
+    Serial.println("waiting for pressure switch to send 0");
+    while (psi == true) // get the vacuum to the proper PSI
     {
       psi = digitalRead(pressureInput);
-      delay(5);
+      delay(100);
     }
     delay(1000);
     //lower fixture
@@ -82,11 +105,14 @@ void loop() //loop routine runs over and over again forever
     digitalWrite(solonoid2, HIGH);
     CheckSolonoid = digitalRead(NPNsuc);
     // wait for the solenoid to be down
-    while (CheckSolonoid = false)
+    CheckSolonoid = digitalRead(NPNsuc);
+    Serial.println("waiting for solenoid to go down");
+    while (CheckSolonoid == false)
     {
       CheckSolonoid = digitalRead(NPNsuc);
-      delay(5);
+      delay(100);
     }
+    delay(2000);
     stage = 2;
     break;
     case 2: 
@@ -95,34 +121,38 @@ void loop() //loop routine runs over and over again forever
     delay(100);
     digitalWrite(clampSLpull, HIGH);
     Lclamps = digitalRead(NPN1);
-    Rclamps = digitalRead(NPN2);
+    //Rclamps = digitalRead(NPN2);
     // wait for the sensors to confirm that the clamps are down
+    Serial.println("waiting fpr the clamps to be down");
     while (Lclamps == false)
     {
       Lclamps = digitalRead(NPN1);
-      delay(5);
+      delay(100);
     }
-    while (Rclamps == false)
+    /*while (Rclamps == false)
     {
       Rclamps = digitalRead(NPN2);
       delay(5);
-    }   
-    delay(1000);
+    }  */
+    delay(1000); 
     // close vacuum
     digitalWrite(valve,LOW); 
     psi = digitalRead(pressureInput);
-    while (psi == true) // wait for the pressure to be gone
+    Serial.println("waiting for pressure switch to send 1");
+    while (psi == false) // wait for the pressure to be gone
     {
       psi = digitalRead(pressureInput);
-      delay(5);
+      delay(100);
     }
-    delay(5000);
+    delay(2000);
     // open vaccum valve
     digitalWrite(valve,HIGH); 
-    while (psi == false) // get the vacuum to the proper PSI
+    psi = digitalRead(pressureInput);
+    Serial.println("waiting for pressure switch to send 0");
+    while (psi == true) // get the vacuum to the proper PSI
     {
       psi = digitalRead(pressureInput);
-      delay(5);
+      delay(100);
     }
     delay(1000);
     // raise clamps
@@ -132,36 +162,47 @@ void loop() //loop routine runs over and over again forever
     Lclamps = digitalRead(NPN1);
     Rclamps = digitalRead(NPN2);
     // wait for the sensors to confirm that the clamps are up
+    Serial.println("waiting fpr the clamps to be up");
     while (Lclamps == true)
     {
       Lclamps = digitalRead(NPN1);
-      delay(5);
+      delay(100);
     }
-    while (Rclamps == true)
+   /* while (Rclamps == true)
     {
       Rclamps = digitalRead(NPN2);
       delay(5);
-    }
-    delay(500);
+    } */
+    delay(500); 
     //raise  fixture
     digitalWrite(solonoid2, LOW);
     delay(100);
     digitalWrite(solonoid1, HIGH);
     CheckSolonoid = digitalRead(NPNsuc);
     // wait for the solenoid to be up
-    while (CheckSolonoid = true)
+    Serial.println("waiting for solenoid to go up");
+    CheckSolonoid = digitalRead(NPNsuc);
+    while (CheckSolonoid == true)
     {
       CheckSolonoid = digitalRead(NPNsuc);
-      delay(5);
+      delay(1000);
     }
     delay(1000);
     // close vacuum
     digitalWrite(valve,LOW); 
     psi = digitalRead(pressureInput);
-    while (psi == true) // wait for the pressure to be gone
+    Serial.println("waiting for pressure switch to send 1");
+    while (psi == false) // wait for the pressure to be gone
     {
       psi = digitalRead(pressureInput);
-      delay(5);
+      delay(100);
+    }
+    recieved = digitalRead(PES);
+    Serial.println("waiting for the substrate to be taken");
+    while (recieved == true) // wait for the substrate to be taken out
+    {
+      recieved = digitalRead(PES); // check if substrate been taken out
+      delay(100);
     }
     delay(5000);
     stage = 1;
