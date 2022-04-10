@@ -241,11 +241,35 @@ switch (stage){
   }
   // turn off the valve for the vacuum
   digitalWrite(valve,LOW); 
-  temprature = (float)subProbeTemperature/1000;
-  while (temprature < 120.5)
+  if ( subFaultCode )                                     // Display error code if present
+  {
+    subErr++;
+    if (subErr >= 4)
+    {
+      //protocol
+    }
+  }
+  else
+  {
+    subErr = 1;
+    subtemprature = (float)subProbeTemperature/1000;
+  }
+  while (subtemprature < 120.5)
   {
     // implement heating mechanism
-    temprature = (float)subProbeTemperature/1000; 
+    if ( subFaultCode )                                     // Display error code if present
+    {
+      subErr++;
+      if (subErr >= 4)
+      {
+        //protocol
+      }
+    }
+    else
+    {
+      subErr = 1;
+      subtemprature = (float)subProbeTemperature/1000;
+    } 
     delay(100);
   }
   // add temprature protocol here
@@ -262,13 +286,37 @@ switch (stage){
   }
   digitalWrite(motorCW, LOW);
   // check temprature
-  temprature = (float)subProbeTemperature/1000; 
-  while (temprature > 60)
+  if ( subFaultCode )                                     // Display error code if present
+  {
+    subErr++;
+    if (subErr >= 4)
+    {
+      //protocol
+    }
+  }
+  else
+  {
+    subErr = 1;
+    subtemprature = (float)subProbeTemperature/1000;
+  }
+  while (subtemprature > 60)
   {
     // implement temprature control here
-    temprature = (float)subProbeTemperature/1000; 
+    if ( subFaultCode )                                     // Display error code if present
+    {
+      subErr++;
+      if (subErr >= 4)
+      {
+        //protocol
+      }
+    }
+    else
+    {
+      subErr = 1;
+      subtemprature = (float)subProbeTemperature/1000;
+    }
   }
-  if (pos2 == true && (temprature > 59.5 && temprature < 60.5)
+  if (pos2 == true && (subtemprature > 59.5 && subtemprature < 60.5))
   {
     //communicate with UI
     stage = 4;
@@ -284,7 +332,7 @@ switch (stage){
     delay(100);
   }
   digitalWrite(motorCCW, LOW);
-  if (pos1 == true && (temprature > 59.5 && temprature < 60.5)
+  if (pos1 == true && (subtemprature > 59.5 && subtemprature < 60.5))
   {
     // communicate with UI
     stage = 5;
