@@ -5,6 +5,7 @@ const int baudRate = 9600; //constant integer to set the baud rate for serial mo
 int stage = 0; // stage value should go from 1 to 5
 const int PES = 28; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
+int substrateReady = 0; // checks if the substrate
 
 // clamps pins
 const int clampSLpush = 5; // clamp push
@@ -108,7 +109,8 @@ void setup() { // input for sensors, output for motors and control units
   // turn on solonoid for suction cup
   digitalWrite(solonoid1, HIGH);
   // wait for the fixture to go up
-  while (CheckSolonoid = false)
+  CheckSolonoid = digitalRead(NPNsuc);  
+  while (CheckSolonoid == false)
   {
     CheckSolonoid = digitalRead(NPNsuc);
     delay(5);
@@ -182,18 +184,30 @@ void loop() {
   
 switch (stage){
   case 1:
-  while (recieved == false) // wait for the substrate to come from the EFEM
+  // wait for substrate to be recieved
+  recieved = digitalRead(PES);
+  while (substrateReady < 5) // wait for the substrate to come from the EFEM
   {
     recieved = digitalRead(PES); // check if substrate been recieved
+    if (recieved == true)
+    {
+      substrateReady++;
+    }else
+    {
+      substrateReady = 0;
+    }
     delay(1000);
   }
+  substrateReady = 0;
   // open vaccum valve
   digitalWrite(valve,HIGH); 
-  while (psi == false) // get the vacuum to the proper PSI
+  psi = digitalRead(pressureInput);
+  while (psi == true) // get the vacuum to the proper PSI
   {
     psi = digitalRead(pressureInput);
-    delay(5);
+    delay(100);
   }
+  delay(1000);
   //lower fixture
   digitalWrite(solonoid1, LOW);
   delay(100);
@@ -203,7 +217,7 @@ switch (stage){
   while (CheckSolonoid = false)
   {
     CheckSolonoid = digitalRead(NPNsuc);
-    delay(5);
+    delay(100);
   }
   stage = 2;
   
@@ -218,19 +232,21 @@ switch (stage){
   while (Lclamps == false)
   {
     Lclamps = digitalRead(NPN1);
-    delay(5);
+    delay(100);
   }
   while (Rclamps == false)
   {
     Rclamps = digitalRead(NPN2);
-    delay(5);
+    delay(100);
   }
   // turn off the valve for the vacuum
   digitalWrite(valve,LOW); 
+  temprature = (float)subProbeTemperature/1000;
   while (temprature < 120.5)
   {
     // implement heating mechanism
     temprature = (float)subProbeTemperature/1000; 
+    delay(100);
   }
   // add temprature protocol here
   // vantage protocol
@@ -238,12 +254,15 @@ switch (stage){
   break;
   case 3:
   analogWrite(motorCW, RPM);
+  pos2 = digitalRead(SMS2);
   while (pos2 == 0)
   {
     pos2 = digitalRead(SMS2);
-    delay(5);
+    delay(100);
   }
   digitalWrite(motorCW, LOW);
+  // check temprature
+  temprature = (float)subProbeTemperature/1000; 
   while (temprature > 60)
   {
     // implement temprature control here
@@ -258,10 +277,11 @@ switch (stage){
   break;
   case 4:
   analogWrite(motorCCW, RPM);
+  pos1 = digitalRead(SMS1);
   while (pos1 == 0)
   {
     pos1 = digitalRead(SMS1);
-    delay(5);
+    delay(100);
   }
   digitalWrite(motorCCW, LOW);
   if (pos1 == true && (temprature > 59.5 && temprature < 60.5)
@@ -272,15 +292,28 @@ switch (stage){
   
   break;
   case 5:
+  // turn on the valve
   digitalWrite(valve,HIGH); 
+  psi = digitalRead(pressureInput);
   while (psi == false) // get the vacuum to the proper PSI
   {
     psi = digitalRead(pressureInput);
-    delay(5);
+    delay(100);
   }
+  delay(1000);
+  // raise fixture
   digitalWrite(solonoid2, LOW);
   delay(100);
   digitalWrite(solonoid1, HIGH);
+  // wait for the solenoid to be up
+  CheckSolonoid = digitalRead(NPNsuc);
+  while (CheckSolonoid == true)
+  {
+    CheckSolonoid = digitalRead(NPNsuc);
+    delay(1000);
+  }
+  delay(1000);
+  // release clamps
   digitalWrite(clampSLpull, LOW);
   delay(100);
   digitalWrite(clampSLpush, HIGH);
@@ -290,20 +323,30 @@ switch (stage){
   while (Lclamps == true)
   {
     Lclamps = digitalRead(NPN1);
-    delay(5);
+    delay(100);
   }
   while (Rclamps == true)
   {
     Rclamps = digitalRead(NPN2);
-    delay(5);
+    delay(100);
   }
-  delay(500);
+  delay(1000);
+  // close vaccuum 
   digitalWrite(valve,LOW); 
+  psi = digitalRead(pressureInput);
   while (psi == true) // wait for the vacuum to turn off
   {
     psi = digitalRead(pressureInput);
-    delay(5);
+    delay(100);
   }
+  recieved = digitalRead(PES);
+  while (recieved == true) // wait for the substrate to be taken out
+  {
+    recieved = digitalRead(PES); // check if substrate been taken out
+    delay(100);
+  }
+  delay(5000);
+  stage = 1;
   break;
 }
 delay(1000);
