@@ -1,7 +1,7 @@
 #include <MAX31855.h> // Include MAX31855 Sensor library
 
 // variables
-const int baudRate = 9600; //constant integer to set the baud rate for serial monitor
+const int baudRate = 115200; //constant integer to set the baud rate for serial monitor
 int stage = 0; // stage value should go from 1 to 5
 const int PES = 28; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
@@ -58,6 +58,17 @@ int steadyHeat = 44; // analog value for the pwm for keeping the temprature at a
 int hErr = 1;
 int subErr = 1;
 int airErr = 1;
+int32_t hAmbientTemperature = hMAX31855.readAmbient(); // retrieve hMAX31855 die ambient temperature
+int32_t hProbeTemperature   = hMAX31855.readProbe();   // retrieve thermocouple probe temp
+uint8_t hFaultCode          = hMAX31855.fault();       // retrieve any error codes
+  
+int32_t subAmbientTemperature = subMAX31855.readAmbient(); // retrieve subMAX31855 die ambient temperature
+int32_t subProbeTemperature   = subMAX31855.readProbe();   // retrieve thermocouple probe temp
+uint8_t subFaultCode          = subMAX31855.fault();       // retrieve any error codes
+  
+int32_t airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
+int32_t airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
+uint8_t airFaultCode          = airMAX31855.fault();       // retrieve any error codes
 
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
@@ -127,33 +138,8 @@ void setup() { // input for sensors, output for motors and control units
   stage = 1;
 }
 
-void loop() {
-  int32_t hAmbientTemperature = hMAX31855.readAmbient(); // retrieve hMAX31855 die ambient temperature
-  int32_t hProbeTemperature   = hMAX31855.readProbe();   // retrieve thermocouple probe temp
-  uint8_t hFaultCode          = hMAX31855.fault();       // retrieve any error codes
-  
-  int32_t subAmbientTemperature = subMAX31855.readAmbient(); // retrieve subMAX31855 die ambient temperature
-  int32_t subProbeTemperature   = subMAX31855.readProbe();   // retrieve thermocouple probe temp
-  uint8_t subFaultCode          = subMAX31855.fault();       // retrieve any error codes
-  
-  int32_t airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
-  int32_t airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
-  uint8_t airFaultCode          = airMAX31855.fault();       // retrieve any error codes
-
-  if ( subFaultCode )                                     // Display error code if present
-  {
-    subErr++;
-    if (subErr >= 4)
-    {
-      //protocol
-    }
-  }
-  else
-  {
-    subErr = 1;
-    subtemprature = (float)subProbeTemperature/1000;
-  }
-  
+void hCheckTemperature()
+{
   if ( hFaultCode )                                     // Display error code if present
   {
     hErr++;
@@ -167,7 +153,25 @@ void loop() {
     hErr = 1;
     htemprature = (float)hProbeTemperature/1000;     
   }
-
+}
+void subCheckTemperature()
+{
+  if ( subFaultCode )                                     // Display error code if present
+  {
+    subErr++;
+    if (subErr >= 4)
+    {
+      //protocol
+    }
+  }
+  else
+  {
+    subErr = 1;
+    subtemprature = (float)subProbeTemperature/1000;
+  }
+}
+void airCheckTemperature()
+{
   if ( airFaultCode )                                     // Display error code if present
   {
     airErr++;
@@ -181,6 +185,12 @@ void loop() {
     hErr = 1;
     airtemprature = (float)airAmbientTemperature/1000;     
   }
+}
+void loop() {
+
+  hCheckTemperature();
+  airCheckTemperature();
+  subCheckTemperature();
   
 switch (stage){
   case 1:
@@ -241,35 +251,11 @@ switch (stage){
   }
   // turn off the valve for the vacuum
   digitalWrite(valve,LOW); 
-  if ( subFaultCode )                                     // Display error code if present
-  {
-    subErr++;
-    if (subErr >= 4)
-    {
-      //protocol
-    }
-  }
-  else
-  {
-    subErr = 1;
-    subtemprature = (float)subProbeTemperature/1000;
-  }
+  subCheckTemperature();
   while (subtemprature < 120.5)
   {
     // implement heating mechanism
-    if ( subFaultCode )                                     // Display error code if present
-    {
-      subErr++;
-      if (subErr >= 4)
-      {
-        //protocol
-      }
-    }
-    else
-    {
-      subErr = 1;
-      subtemprature = (float)subProbeTemperature/1000;
-    } 
+    subCheckTemperature();
     delay(100);
   }
   // add temprature protocol here
@@ -286,35 +272,11 @@ switch (stage){
   }
   digitalWrite(motorCW, LOW);
   // check temprature
-  if ( subFaultCode )                                     // Display error code if present
-  {
-    subErr++;
-    if (subErr >= 4)
-    {
-      //protocol
-    }
-  }
-  else
-  {
-    subErr = 1;
-    subtemprature = (float)subProbeTemperature/1000;
-  }
+  subCheckTemperature();
   while (subtemprature > 60)
   {
     // implement temprature control here
-    if ( subFaultCode )                                     // Display error code if present
-    {
-      subErr++;
-      if (subErr >= 4)
-      {
-        //protocol
-      }
-    }
-    else
-    {
-      subErr = 1;
-      subtemprature = (float)subProbeTemperature/1000;
-    }
+    subCheckTemperature();
   }
   if (pos2 == true && (subtemprature > 59.5 && subtemprature < 60.5))
   {
