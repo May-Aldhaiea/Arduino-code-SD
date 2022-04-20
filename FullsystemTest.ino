@@ -1,4 +1,6 @@
 #include <MAX31855.h> // Include MAX31855 Sensor library
+#include <Stepper.h>
+#include <Keyboard.h>
 
 // variables
 const int baudRate = 115200; //constant integer to set the baud rate for serial monitor
@@ -6,6 +8,7 @@ int stage = 0; // stage value should go from 1 to 5
 const int PES = 28; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
 int substrateReady = 0; // checks if the substrate
+int Readinput; // read info into the GUI
 
 // clamps pins
 const int clampSLpush = 5; // clamp push
@@ -32,14 +35,18 @@ bool psi = false; // checks if the target psi is reached
 //int pressure = 0;
 
 // lead screw pins
-const int motorCW = 3; // clockwise motor
-const int motorCCW = 4; // counter clockwise motor
+const int motorStep = 3; // motor step
+const int motorDir = 4; // motor direction
 const int SMS1 = 22; // position 1 proximity sensor
 const int SMS2 = 24; // position 2 proximity sensor
 int pos1 = 0; // check if position one is on
 int pos2 = 0; // check if position two is on
-const int RPM = 15; // 6% power
+const int RPM = 600; // rotation speed
+int Step = 0; // count the steps of the motor
+int dir = -200; // start counter clock wise
 bool CW = false; // state diagram for stepper motor
+int maxSteps = 2074485; // the required steps before the motor stops
+Stepper motor(200, motorStep, motorDir); // start up the motor
 
 // heater pins
 const int SSR = 8; // solid state relay
@@ -84,10 +91,11 @@ void setup() { // input for sensors, output for motors and control units
   pinMode(valve, OUTPUT);
   
   // lead screw
-  pinMode(motorCW, OUTPUT);
-  pinMode(motorCCW, OUTPUT);
+  pinMode(motorStep, OUTPUT);
+  pinMode(motorDir, OUTPUT);
   pinMode(SMS1, INPUT);
   pinMode(SMS2, INPUT);
+  motor.setSpeed(RPM);
    
   //clamps
   pinMode(clampSLpush, OUTPUT);
@@ -263,14 +271,31 @@ switch (stage){
   stage = 3;
   break;
   case 3:
-  analogWrite(motorCW, RPM);
+  // move the substrate into the vantage
+  motor.step(dir);
+  Step++;
   pos2 = digitalRead(SMS2);
   while (pos2 == 0)
   {
+    motor.step(dir);
+    Step++;
+    delayMicroseconds(2);
     pos2 = digitalRead(SMS2);
-    delay(100);
   }
-  digitalWrite(motorCW, LOW);
+  if (pos2 == 1)
+  {
+    while (Step < maxSteps)
+    {
+      motor.step(dir);
+      Step++;
+      delayMicroseconds(2);
+    }
+    Step = 0;
+    dir = 0;
+    motor.step(dir);
+    dir = 200;
+    CW = true;
+  }
   // check temprature
   subCheckTemperature();
   while (subtemprature > 60)
@@ -286,14 +311,30 @@ switch (stage){
   
   break;
   case 4:
-  analogWrite(motorCCW, RPM);
+  // move the substrate back to it's original position
+  motor.step(dir);
+  Step++;
   pos1 = digitalRead(SMS1);
   while (pos1 == 0)
   {
+    motor.step(dir);
+    Step++;
     pos1 = digitalRead(SMS1);
-    delay(100);
   }
-  digitalWrite(motorCCW, LOW);
+  if (pos1 == 1)
+  {
+    while (Step < maxSteps)
+    {
+      motor.step(dir);
+      Step++;
+      delayMicroseconds(2);
+    }
+    Step = 0;
+    dir = 0;
+    motor.step(dir);
+    dir = -200;
+    CW = false;
+  }
   if (pos1 == true && (subtemprature > 59.5 && subtemprature < 60.5))
   {
     // communicate with UI
