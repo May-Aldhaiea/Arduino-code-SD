@@ -65,23 +65,21 @@ int steadyHeat = 44; // analog value for the pwm for keeping the temprature at a
 int hErr = 1;
 int subErr = 1;
 int airErr = 1;
-int32_t hAmbientTemperature = hMAX31855.readAmbient(); // retrieve hMAX31855 die ambient temperature
-int32_t hProbeTemperature   = hMAX31855.readProbe();   // retrieve thermocouple probe temp
-uint8_t hFaultCode          = hMAX31855.fault();       // retrieve any error codes
+int32_t hAmbientTemperature;
+int32_t hProbeTemperature;
+uint8_t hFaultCode;
+int highHeat = 1;
   
-int32_t subAmbientTemperature = subMAX31855.readAmbient(); // retrieve subMAX31855 die ambient temperature
-int32_t subProbeTemperature   = subMAX31855.readProbe();   // retrieve thermocouple probe temp
-uint8_t subFaultCode          = subMAX31855.fault();       // retrieve any error codes
+int32_t subAmbientTemperature;
+int32_t subProbeTemperature;
+uint8_t subFaultCode;
   
-int32_t airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
-int32_t airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
-uint8_t airFaultCode          = airMAX31855.fault();       // retrieve any error codes
+int32_t airAmbientTemperature;
+int32_t airProbeTemperature;
+uint8_t airFaultCode;
 
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
-  #ifdef  __AVR_ATmega32U4__  // If this is a 32U4 processor, then wait 3 seconds for the interface to initialize
-    delay(3000);
-  #endif
   pinMode(PES,INPUT); 
   // suction cup
   pinMode(solonoid1, OUTPUT); // suction cups
@@ -137,6 +135,14 @@ void setup() { // input for sensors, output for motors and control units
   //turn on solonoid for clamps
   digitalWrite(clampSLpush, HIGH);
   // heater on
+  digitalWrite(SSR, HIGH);
+  hCheckTemperature();  
+  while (htemprature <= 120)
+  {
+    hCheckTemperature();
+    delay(1000);
+  }
+  digitalWrite(SSR,LOW);
 
   // lead screw setup
   pos1 = digitalRead(SMS1); // read sensor 1
@@ -148,6 +154,9 @@ void setup() { // input for sensors, output for motors and control units
 
 void hCheckTemperature()
 {
+  hAmbientTemperature = hMAX31855.readAmbient(); // retrieve hMAX31855 die ambient temperature
+  hProbeTemperature   = hMAX31855.readProbe();   // retrieve thermocouple probe temp
+  hFaultCode          = hMAX31855.fault();       // retrieve any error codes
   if ( hFaultCode )                                     // Display error code if present
   {
     hErr++;
@@ -164,6 +173,9 @@ void hCheckTemperature()
 }
 void subCheckTemperature()
 {
+  subAmbientTemperature = subMAX31855.readAmbient(); // retrieve subMAX31855 die ambient temperature
+  subProbeTemperature   = subMAX31855.readProbe();   // retrieve thermocouple probe temp
+  subFaultCode          = subMAX31855.fault();       // retrieve any error codes
   if ( subFaultCode )                                     // Display error code if present
   {
     subErr++;
@@ -180,6 +192,9 @@ void subCheckTemperature()
 }
 void airCheckTemperature()
 {
+  airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
+  airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
+  airFaultCode          = airMAX31855.fault();       // retrieve any error codes
   if ( airFaultCode )                                     // Display error code if present
   {
     airErr++;
@@ -199,7 +214,29 @@ void loop() {
   hCheckTemperature();
   airCheckTemperature();
   subCheckTemperature();
-  
+  switch(highHeat)
+  {
+    case 1:
+    digitalWrite(SSR, HIGH);
+    hCheckTemperature();  
+    while (htemprature <= 120)
+    {
+      hCheckTemperature();
+      delay(1000);
+    }
+    digitalWrite(SSR,LOW);
+    break;
+    case 0:
+    digitalWrite(SSR, HIGH);
+    hCheckTemperature();  
+    while (htemprature <= 60)
+    {
+      hCheckTemperature();
+      delay(1000);
+    }
+    digitalWrite(SSR,LOW);
+    break;
+  }
 switch (stage){
   case 1:
   // wait for substrate to be recieved
@@ -260,11 +297,13 @@ switch (stage){
   // turn off the valve for the vacuum
   digitalWrite(valve,LOW); 
   subCheckTemperature();
-  while (subtemprature < 120.5)
+  while (subtemprature <= 120)
   {
-    // implement heating mechanism
+    //digitalWrite(SSR, HIGH);
     subCheckTemperature();
-    delay(100);
+    // communicate to vantage
+    delay(1000);
+    highHeat = 1;
   }
   // add temprature protocol here
   // vantage protocol
@@ -302,6 +341,7 @@ switch (stage){
   {
     // implement temprature control here
     subCheckTemperature();
+    highHeat = 0;
   }
   if (pos2 == true && (subtemprature > 59.5 && subtemprature < 60.5))
   {
