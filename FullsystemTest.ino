@@ -386,8 +386,9 @@ switch (stage){
     // implement temprature control here
     subCheckTemperature();
     highHeat = 0;
-  }*/
-  digitalWrite(SSR, LOW);
+  }
+  digitalWrite(SSR, LOW);*/
+  delay(5000);
   if (posB == true); //&& (subtemprature > 59.5 && subtemprature < 60.5))
   {
     //communicate with UI
