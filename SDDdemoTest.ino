@@ -36,7 +36,7 @@ bool psi = false; // checks if the target psi is reached
 // lead screw pins
 const int motorStep = 6; // motor direction
 const int motorDir = 7; // motor step
-int RPM =600; // 500-600
+int RPM =1000; // 500-600 - 1000 is ideal
 int Step = 0;
 int dir = -0;
 bool CW = false;
@@ -48,7 +48,7 @@ int maxSteps = 25985; // the required steps before the motor stops
 int midway = 0;
 int halt = 0;
 int wait1 = 0, wait2 = 0;
-Stepper motor(200, motorStep, motorDir);
+Stepper motor(800, motorStep, motorDir);
 
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
@@ -107,7 +107,7 @@ void setup() { // input for sensors, output for motors and control units
   if (posA == 0 || posB == 1)
   {
     halt = 1;
-    dir = -200;
+    dir = -1600;
     Serial.println("moving the fixture back to the original position (position B)");
     while (halt == 1)
     {
@@ -216,7 +216,7 @@ switch (stage){
   case 3:
   // move the substrate into the vantage
   halt = 1;
-  dir = 200;
+  dir = 1600;
   Serial.println("moving the fixture toward the vantage (position A)");
   while (halt == 1)
   {
@@ -255,7 +255,7 @@ switch (stage){
   case 4:
   // move the substrate back to it's original position
   halt = 1;
-  dir = -200;
+  dir = -1600;
   Serial.println("moving the fixture back to the original position (position B)");
   while (halt == 1)
   {
