@@ -52,34 +52,26 @@ int wait1 = 0, wait2 = 0;
 Stepper motor(800, motorStep, motorDir);
 
 // heater pins
-const int SSR = 8; // solid state relay
-const int csH = 14; // heating plate cs
-const int csSub = 16; // substrate cs
-const int csAir = 18; // vantage air temp cs 
+const int SSR = 11; // solid state relay
+const int csH = 12; // heating plate cs
+//const int csSub = 16; // substrate cs
 const uint8_t  SPI_MISO         =   MISO; ///< Master-In, Slave-Out PIN for SPI
 const uint8_t  SPI_SYSTEM_CLOCK =    SCK; ///< System Clock PIN for SPI
 float htemprature = 0.0;
-float subtemprature = 0.0;
-float airtemprature = 0.0;
+//float subtemprature = 0.0;
 MAX31855_Class hMAX31855; ///< Create an instance of MAX31855 for heating plate
-MAX31855_Class subMAX31855; ///< Create an instance of MAX31855 for substrate
-MAX31855_Class airMAX31855; ///< Create an instance of MAX31855 for the air temprature
+//MAX31855_Class subMAX31855; ///< Create an instance of MAX31855 for substrate
 int steadyHeat = 44; // analog value for the pwm for keeping the temprature at a steady rate
 int hErr = 1;
 int subErr = 1;
-int airErr = 1;
 int32_t hAmbientTemperature;
 int32_t hProbeTemperature;
 uint8_t hFaultCode;
 int highHeat = 1;
   
-int32_t subAmbientTemperature;
+/*int32_t subAmbientTemperature;
 int32_t subProbeTemperature;
-uint8_t subFaultCode;
-  
-int32_t airAmbientTemperature;
-int32_t airProbeTemperature;
-uint8_t airFaultCode;
+uint8_t subFaultCode;*/
 
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
@@ -114,16 +106,11 @@ void setup() { // input for sensors, output for motors and control units
     Serial.println(F("Unable to start csH MAX31855. Waiting 3 seconds."));
     delay(3000);
   } // of loop until device is located
-  while (!subMAX31855.begin(csSub))
+ /* while (!subMAX31855.begin(csSub))
   {
     Serial.println(F("Unable to start csSub MAX31855. Waiting 3 seconds."));
     delay(3000);
-  } // of loop until device is located
-  while (!airMAX31855.begin(csAir))
-  {
-    Serial.println(F("Unable to start csAir MAX31855. Waiting 3 seconds."));
-    delay(3000);
-  } // of loop until device is located
+  }*/ // of loop until device is located
 
   // setup phase
   // turn on solonoid for suction cup
@@ -223,7 +210,7 @@ void hCheckTemperature()
     htemprature = (float)hProbeTemperature/1000;     
   }
 }
-void subCheckTemperature()
+/*void subCheckTemperature()
 {
   subAmbientTemperature = subMAX31855.readAmbient(); // retrieve subMAX31855 die ambient temperature
   subProbeTemperature   = subMAX31855.readProbe();   // retrieve thermocouple probe temp
@@ -241,31 +228,11 @@ void subCheckTemperature()
     subErr = 1;
     subtemprature = (float)subProbeTemperature/1000;
   }
-}
-void airCheckTemperature()
-{
-  airAmbientTemperature = airMAX31855.readAmbient(); // retrieve airMAX31855 die ambient temperature
-  airProbeTemperature   = airMAX31855.readProbe();   // retrieve thermocouple probe temp
-  airFaultCode          = airMAX31855.fault();       // retrieve any error codes
-  if ( airFaultCode )                                     // Display error code if present
-  {
-    airErr++;
-    if (airErr >= 4)
-    {
-      //protocol
-    }
-  }
-  else
-  {
-    hErr = 1;
-    airtemprature = (float)airAmbientTemperature/1000;     
-  }
-}
+}*/
 void loop() {
 
   hCheckTemperature();
-  airCheckTemperature();
-  subCheckTemperature();
+  //subCheckTemperature();
   posA = digitalRead(SMS1); // read sensor 1
   posB = digitalRead(SMS2); // read sensor 2
   
@@ -362,7 +329,7 @@ switch (stage){
     delay(100);
   }
   // turn off the valve for the vacuum
-  digitalWrite(valve,LOW); 
+  /*digitalWrite(valve,LOW); 
   subCheckTemperature();
   digitalWrite(SSR, HIGH);
   Serial.println("waiting for the substrate to get to 60C");
@@ -374,7 +341,7 @@ switch (stage){
     delay(1000);
     highHeat = 1;
   }
-  digitalWrite(SSR, LOW);
+  digitalWrite(SSR, LOW);*/
   // add temprature protocol here
   // vantage protocol
   stage = 3;
@@ -411,7 +378,7 @@ switch (stage){
     motor.step(dir);
   }
   // check temprature
-  digitalWrite(SSR, HIGH);
+  /*digitalWrite(SSR, HIGH);
   subCheckTemperature();
   Serial.println("cooling the substrate and the heating pad to 60C");
   while (subtemprature <= 60)
@@ -419,9 +386,9 @@ switch (stage){
     // implement temprature control here
     subCheckTemperature();
     highHeat = 0;
-  }
+  }*/
   digitalWrite(SSR, LOW);
-  if (posB == true && (subtemprature > 59.5 && subtemprature < 60.5))
+  if (posB == true); //&& (subtemprature > 59.5 && subtemprature < 60.5))
   {
     //communicate with UI
     stage = 4;
@@ -459,7 +426,7 @@ switch (stage){
     }
     motor.step(dir);
   }
-  if (posA == true && (subtemprature > 59.5 && subtemprature < 60.5))
+  if (posA == true); //&& (subtemprature > 59.5 && subtemprature < 60.5))
   {
     // communicate with UI
     stage = 5;
