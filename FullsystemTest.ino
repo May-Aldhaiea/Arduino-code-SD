@@ -5,25 +5,25 @@
 // variables
 const int baudRate = 115200; //constant integer to set the baud rate for serial monitor
 int stage = 0; // stage value should go from 1 to 5
-const int PES = 28; // photoelectric sensor pin
+const int PES = 8; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
 int substrateReady = 0; // checks if the substrate
 int Readinput; // read info into the GUI
 
 // clamps pins
-const int clampSLpush = 5; // clamp push
-const int clampSLpull = 6; // clamp pull
-const int NPN1 = 1; // left side sensor
-const int NPN2 = 2; // right side sensor
+const int clampSLpush = 25; // clamp push
+const int clampSLpull = 27; // clamp pull
+const int NPN1 = 35; // left side sensor
+const int NPN2 = 37; // right side sensor
 bool Lclamps = true; // a state diagram to know if the left clamp is on or off
 bool Rclamps = true; // a state diagram to know if the right clamps is on or off
 
 // suction cup pins
-const int pressureInput = 11; //select the analog input pin for the pressure transducer
-const int solonoid1 = 12; //suction cup push
-const int solonoid2 = 13; // suction cup pull
-const int NPNsuc = 7; // npn sensor for the suction cup
-const int valve = 26; // valve for the vacuum  
+const int pressureInput = 9; //select the analog input pin for the pressure transducer
+const int solonoid1 = 31; //suction cup push
+const int solonoid2 = 29; // suction cup pull
+const int NPNsuc = 33; // npn sensor for the suction cup
+const int valve = 23; // valve for the vacuum  
 const int pressureZero = 102.4; //analog reading of pressure transducer at 0psi
 const int pressureMax = 921.6; //analog reading of pressure transducer at 100psi
 const int pressuretransducermaxPSI = 100; //psi value of transducer being used
@@ -35,18 +35,21 @@ bool psi = false; // checks if the target psi is reached
 //int pressure = 0;
 
 // lead screw pins
-const int motorStep = 3; // motor step
-const int motorDir = 4; // motor direction
-const int SMS1 = 22; // position 1 proximity sensor
-const int SMS2 = 24; // position 2 proximity sensor
-int pos1 = 0; // check if position one is on
-int pos2 = 0; // check if position two is on
-const int RPM = 600; // rotation speed
-int Step = 0; // count the steps of the motor
-int dir = -200; // start counter clock wise
-bool CW = false; // state diagram for stepper motor
-int maxSteps = 2074485; // the required steps before the motor stops
-Stepper motor(200, motorStep, motorDir); // start up the motor
+const int motorStep = 6; // motor direction
+const int motorDir = 7; // motor step
+int RPM =1000; // 500-600 - 1000 is ideal
+int Step = 0;
+int dir = -0;
+bool CW = false;
+const int SMS1 = 47; // position 1 proximity sensor
+const int SMS2 = 49; // position 2 proximity sensor
+int posA = 0; // check if position one is on
+int posB = 0; // check if position two is on
+int maxSteps = 25985; // the required steps before the motor stops
+int midway = 0;
+int halt = 0;
+int wait1 = 0, wait2 = 0;
+Stepper motor(800, motorStep, motorDir);
 
 // heater pins
 const int SSR = 8; // solid state relay
@@ -126,30 +129,79 @@ void setup() { // input for sensors, output for motors and control units
   // turn on solonoid for suction cup
   digitalWrite(solonoid1, HIGH);
   // wait for the fixture to go up
+  Serial.println("waiting for fixture to go up");
   CheckSolonoid = digitalRead(NPNsuc);  
-  while (CheckSolonoid == false)
+  while (CheckSolonoid == true)
   {
     CheckSolonoid = digitalRead(NPNsuc);
     delay(5);
   }
   //turn on solonoid for clamps
   digitalWrite(clampSLpush, HIGH);
+  Serial.println("waiting for clamps to go up");
+    while (Lclamps == true)
+    {
+      digitalWrite(clampSLpush, HIGH);
+      Lclamps = digitalRead(NPN1);
+      delay(100);
+    }
+    while (Rclamps == true)
+    {
+      digitalWrite(clampSLpush, HIGH);
+      Rclamps = digitalRead(NPN2);
+      delay(5);
+    } 
+
+  // lead screw setup
+  posA = digitalRead(SMS1); // read sensor 1
+  posB = digitalRead(SMS2); // read sensor 2
+  if (posA == 0 || posB == 1)
+  {
+    halt = 1;
+    dir = -1600;
+    Serial.println("moving the fixture back to the original position (position B)");
+    while (halt == 1)
+    {
+      posA = digitalRead(SMS1); // read sensor 1
+      posB = digitalRead(SMS2); // read sensor 2
+      if (posB == 0 && posA == 0)
+      {
+        midway = 1;
+      }
+      if (midway == 1)
+      {
+        if (posA == 1)
+        {
+          dir = 0;
+          motor.step(dir);
+          //Readinput = 't';
+          wait2++;
+          if (wait2 == 15)
+          {
+            wait2 = 0;
+            midway = 0;
+            halt = 0;
+          }
+        }
+      }
+      motor.step(dir);
+    }
+  }
+
   // heater on
   digitalWrite(SSR, HIGH);
   hCheckTemperature();  
-  while (htemprature <= 120)
+  Serial.println("waiting for heating plate to reach certain temperature");
+  while (htemprature <= 60)
   {
     hCheckTemperature();
     delay(1000);
   }
   digitalWrite(SSR,LOW);
-
-  // lead screw setup
-  pos1 = digitalRead(SMS1); // read sensor 1
-  pos2 = digitalRead(SMS2); // read sensor 2
-
+  
   // communicate to the vantage
   stage = 1;
+  delay(1000);
 }
 
 void hCheckTemperature()
@@ -214,19 +266,12 @@ void loop() {
   hCheckTemperature();
   airCheckTemperature();
   subCheckTemperature();
-  switch(highHeat)
+  posA = digitalRead(SMS1); // read sensor 1
+  posB = digitalRead(SMS2); // read sensor 2
+  
+  /*switch(highHeat)
   {
     case 1:
-    digitalWrite(SSR, HIGH);
-    hCheckTemperature();  
-    while (htemprature <= 120)
-    {
-      hCheckTemperature();
-      delay(1000);
-    }
-    digitalWrite(SSR,LOW);
-    break;
-    case 0:
     digitalWrite(SSR, HIGH);
     hCheckTemperature();  
     while (htemprature <= 60)
@@ -236,15 +281,34 @@ void loop() {
     }
     digitalWrite(SSR,LOW);
     break;
-  }
+    case 0:
+    digitalWrite(SSR, HIGH);
+    hCheckTemperature();  
+    while (htemprature <= 40)
+    {
+      hCheckTemperature();
+      delay(1000);
+    }
+    digitalWrite(SSR,LOW);
+    break;
+  }*/
+    digitalWrite(SSR, HIGH);
+    hCheckTemperature();  
+    while (htemprature <= 60)
+    {
+      hCheckTemperature();
+      delay(1000);
+    }
+    digitalWrite(SSR,LOW);
 switch (stage){
   case 1:
   // wait for substrate to be recieved
   recieved = digitalRead(PES);
-  while (substrateReady < 5) // wait for the substrate to come from the EFEM
+  Serial.println("waiting for substrate");
+  while (substrateReady < 10) // wait for the substrate to come from the EFEM
   {
     recieved = digitalRead(PES); // check if substrate been recieved
-    if (recieved == true)
+    if (recieved == false)
     {
       substrateReady++;
     }else
@@ -257,6 +321,7 @@ switch (stage){
   // open vaccum valve
   digitalWrite(valve,HIGH); 
   psi = digitalRead(pressureInput);
+  Serial.println("waiting for vacuum to reach the proper PSI");
   while (psi == true) // get the vacuum to the proper PSI
   {
     psi = digitalRead(pressureInput);
@@ -269,6 +334,7 @@ switch (stage){
   digitalWrite(solonoid2, HIGH);
   CheckSolonoid = digitalRead(NPNsuc);
   // wait for the solenoid to be down
+  Serial.println("waiting for the fixture to go down");
   while (CheckSolonoid = false)
   {
     CheckSolonoid = digitalRead(NPNsuc);
@@ -284,6 +350,7 @@ switch (stage){
   Lclamps = digitalRead(NPN1);
   Rclamps = digitalRead(NPN2);
   // wait for the sensors to confirm that the clamps are down
+  Serial.println("waiting for the clamps to latch onto the fixture");
   while (Lclamps == false)
   {
     Lclamps = digitalRead(NPN1);
@@ -297,7 +364,9 @@ switch (stage){
   // turn off the valve for the vacuum
   digitalWrite(valve,LOW); 
   subCheckTemperature();
-  while (subtemprature <= 120)
+  digitalWrite(SSR, HIGH);
+  Serial.println("waiting for the substrate to get to 60C");
+  while (subtemprature <= 60)
   {
     //digitalWrite(SSR, HIGH);
     subCheckTemperature();
@@ -305,45 +374,54 @@ switch (stage){
     delay(1000);
     highHeat = 1;
   }
+  digitalWrite(SSR, LOW);
   // add temprature protocol here
   // vantage protocol
   stage = 3;
   break;
   case 3:
   // move the substrate into the vantage
-  motor.step(dir);
-  Step++;
-  pos2 = digitalRead(SMS2);
-  while (pos2 == 0)
+  halt = 1;
+  dir = 1600;
+  Serial.println("moving the fixture toward the vantage (position A)");
+  while (halt == 1)
   {
-    motor.step(dir);
-    Step++;
-    delayMicroseconds(2);
-    pos2 = digitalRead(SMS2);
-  }
-  if (pos2 == 1)
-  {
-    while (Step < maxSteps)
+    posA = digitalRead(SMS1); // read sensor 1
+    posB = digitalRead(SMS2); // read sensor 2
+    if (posB == 0 && posA == 0)
     {
-      motor.step(dir);
-      Step++;
-      delayMicroseconds(2);
+      midway = 1;
     }
-    Step = 0;
-    dir = 0;
+    if (midway == 1)
+    {
+      if (posB == 1)
+      {
+        dir = 0;
+        motor.step(dir);
+        //Readinput = 't';
+        wait1++;
+        if (wait1 == 15)
+        {
+          wait1 = 0;
+          midway = 0;
+          halt = 0;
+        }
+      }
+    }
     motor.step(dir);
-    dir = 200;
-    CW = true;
   }
   // check temprature
+  digitalWrite(SSR, HIGH);
   subCheckTemperature();
-  while (subtemprature > 60)
+  Serial.println("cooling the substrate and the heating pad to 60C");
+  while (subtemprature <= 60)
   {
     // implement temprature control here
     subCheckTemperature();
     highHeat = 0;
   }
-  if (pos2 == true && (subtemprature > 59.5 && subtemprature < 60.5))
+  digitalWrite(SSR, LOW);
+  if (posB == true && (subtemprature > 59.5 && subtemprature < 60.5))
   {
     //communicate with UI
     stage = 4;
@@ -352,30 +430,36 @@ switch (stage){
   break;
   case 4:
   // move the substrate back to it's original position
-  motor.step(dir);
-  Step++;
-  pos1 = digitalRead(SMS1);
-  while (pos1 == 0)
+  halt = 1;
+  dir = -1600;
+  Serial.println("moving the fixture back to the original position (position B)");
+  while (halt == 1)
   {
-    motor.step(dir);
-    Step++;
-    pos1 = digitalRead(SMS1);
-  }
-  if (pos1 == 1)
-  {
-    while (Step < maxSteps)
+    posA = digitalRead(SMS1); // read sensor 1
+    posB = digitalRead(SMS2); // read sensor 2
+    if (posB == 0 && posA == 0)
     {
-      motor.step(dir);
-      Step++;
-      delayMicroseconds(2);
+      midway = 1;
     }
-    Step = 0;
-    dir = 0;
+    if (midway == 1)
+    {
+      if (posA == 1)
+      {
+        dir = 0;
+        motor.step(dir);
+        //Readinput = 't';
+        wait2++;
+        if (wait2 == 15)
+        {
+          wait2 = 0;
+          midway = 0;
+          halt = 0;
+        }
+      }
+    }
     motor.step(dir);
-    dir = -200;
-    CW = false;
   }
-  if (pos1 == true && (subtemprature > 59.5 && subtemprature < 60.5))
+  if (posA == true && (subtemprature > 59.5 && subtemprature < 60.5))
   {
     // communicate with UI
     stage = 5;
@@ -386,22 +470,11 @@ switch (stage){
   // turn on the valve
   digitalWrite(valve,HIGH); 
   psi = digitalRead(pressureInput);
+  Serial.println("waiting for vacuum to reach the proper PSI");
   while (psi == false) // get the vacuum to the proper PSI
   {
     psi = digitalRead(pressureInput);
     delay(100);
-  }
-  delay(1000);
-  // raise fixture
-  digitalWrite(solonoid2, LOW);
-  delay(100);
-  digitalWrite(solonoid1, HIGH);
-  // wait for the solenoid to be up
-  CheckSolonoid = digitalRead(NPNsuc);
-  while (CheckSolonoid == true)
-  {
-    CheckSolonoid = digitalRead(NPNsuc);
-    delay(1000);
   }
   delay(1000);
   // release clamps
@@ -411,6 +484,7 @@ switch (stage){
   Lclamps = digitalRead(NPN1);
   Rclamps = digitalRead(NPN2);
   // wait for the sensors to confirm that the clamps are up
+  Serial.println("waiting for the clamps to release");
   while (Lclamps == true)
   {
     Lclamps = digitalRead(NPN1);
@@ -422,21 +496,37 @@ switch (stage){
     delay(100);
   }
   delay(1000);
+  // raise fixture
+  digitalWrite(solonoid2, LOW);
+  delay(100);
+  digitalWrite(solonoid1, HIGH);
+  // wait for the solenoid to be up
+  Serial.println("waiting for fixture to go up");
+  CheckSolonoid = digitalRead(NPNsuc);
+  while (CheckSolonoid == true)
+  {
+    CheckSolonoid = digitalRead(NPNsuc);
+    delay(1000);
+  }
+  delay(1000);
   // close vaccuum 
   digitalWrite(valve,LOW); 
   psi = digitalRead(pressureInput);
-  while (psi == true) // wait for the vacuum to turn off
+  Serial.println("waiting for vacuum to turn off");
+  while (psi == false) // wait for the vacuum to turn off
   {
     psi = digitalRead(pressureInput);
     delay(100);
   }
   recieved = digitalRead(PES);
-  while (recieved == true) // wait for the substrate to be taken out
+  Serial.println("waiting for substrate to be picked up by the EFM");
+  while (recieved == false) // wait for the substrate to be taken out
   {
     recieved = digitalRead(PES); // check if substrate been taken out
     delay(100);
   }
   delay(5000);
+  Serial.println("Process is complete");
   stage = 1;
   break;
 }
