@@ -1,6 +1,7 @@
 #include <MAX31855.h> // Include MAX31855 Sensor library
 #include <Stepper.h>
 #include <Keyboard.h>
+#include <string.h>
 
 // variables
 const int baudRate = 115200; //constant integer to set the baud rate for serial monitor
@@ -53,11 +54,12 @@ Stepper motor(800, motorStep, motorDir);
 
 // heater pins
 const int SSR = 11; // solid state relay
-const int csH = 12; // heating plate cs
+const int csH = 10; // heating plate cs
 //const int csSub = 16; // substrate cs
 const uint8_t  SPI_MISO         =   MISO; ///< Master-In, Slave-Out PIN for SPI
 const uint8_t  SPI_SYSTEM_CLOCK =    SCK; ///< System Clock PIN for SPI
 float htemprature = 0.0;
+String communicate;
 //float subtemprature = 0.0;
 MAX31855_Class hMAX31855; ///< Create an instance of MAX31855 for heating plate
 //MAX31855_Class subMAX31855; ///< Create an instance of MAX31855 for substrate
@@ -68,7 +70,7 @@ int32_t hAmbientTemperature;
 int32_t hProbeTemperature;
 uint8_t hFaultCode;
 int highHeat = 1;
-  
+float maxtemp = 40; // heat temperature for heater
 /*int32_t subAmbientTemperature;
 int32_t subProbeTemperature;
 uint8_t subFaultCode;*/
@@ -149,6 +151,7 @@ void setup() { // input for sensors, output for motors and control units
     Serial.println("moving the fixture back to the original position (position B)");
     while (halt == 1)
     {
+      digitalWrite(SSR, HIGH);
       posA = digitalRead(SMS1); // read sensor 1
       posB = digitalRead(SMS2); // read sensor 2
       if (posB == 0 && posA == 0)
@@ -171,6 +174,7 @@ void setup() { // input for sensors, output for motors and control units
           }
         }
       }
+      digitalWrite(SSR,LOW);
       motor.step(dir);
     }
   }
@@ -179,10 +183,12 @@ void setup() { // input for sensors, output for motors and control units
   digitalWrite(SSR, HIGH);
   hCheckTemperature();  
   Serial.println("waiting for heating plate to reach certain temperature");
-  while (htemprature <= 60)
+  while (htemprature <= maxtemp)
   {
     hCheckTemperature();
-    delay(1000);
+    communicate = String(htemprature);
+    Serial.println("the temperature is at " + communicate);
+    delay(2000);
   }
   digitalWrite(SSR,LOW);
   
@@ -207,8 +213,32 @@ void hCheckTemperature()
   else
   {
     hErr = 1;
-    htemprature = (float)hProbeTemperature/1000;     
+    htemprature = (float)hProbeTemperature/1000 + 1.5;
+    // send temp to GUI     
   }
+}
+void maintainHeater()
+{
+    hCheckTemperature();  
+    if (htemprature < maxtemp)
+    {
+      digitalWrite(SSR, HIGH);
+      while (htemprature < maxtemp)
+      {
+        hCheckTemperature();
+        delay(1000);
+      }
+    }else if (htemprature > maxtemp)
+    {
+      digitalWrite(SSR, LOW);
+      while (htemprature > maxtemp)
+      {
+        
+        hCheckTemperature();
+        delay(1000);
+      }
+    }
+    digitalWrite(SSR,LOW);
 }
 /*void subCheckTemperature()
 {
@@ -259,14 +289,7 @@ void loop() {
     digitalWrite(SSR,LOW);
     break;
   }*/
-    digitalWrite(SSR, HIGH);
-    hCheckTemperature();  
-    while (htemprature <= 60)
-    {
-      hCheckTemperature();
-      delay(1000);
-    }
-    digitalWrite(SSR,LOW);
+    maintainHeater();
 switch (stage){
   case 1:
   // wait for substrate to be recieved
@@ -285,6 +308,7 @@ switch (stage){
     delay(1000);
   }
   substrateReady = 0;
+  maintainHeater();
   // open vaccum valve
   digitalWrite(valve,HIGH); 
   psi = digitalRead(pressureInput);
@@ -295,6 +319,7 @@ switch (stage){
     delay(100);
   }
   delay(1000);
+  maintainHeater();
   //lower fixture
   digitalWrite(solonoid1, LOW);
   delay(100);
@@ -328,6 +353,7 @@ switch (stage){
     Rclamps = digitalRead(NPN2);
     delay(100);
   }
+  maintainHeater();
   // turn off the valve for the vacuum
   /*digitalWrite(valve,LOW); 
   subCheckTemperature();
@@ -353,6 +379,7 @@ switch (stage){
   Serial.println("moving the fixture toward the vantage (position A)");
   while (halt == 1)
   {
+    digitalWrite(SSR, HIGH);
     posA = digitalRead(SMS1); // read sensor 1
     posB = digitalRead(SMS2); // read sensor 2
     if (posB == 0 && posA == 0)
@@ -375,6 +402,7 @@ switch (stage){
         }
       }
     }
+    digitalWrite(SSR,LOW);
     motor.step(dir);
   }
   // check temprature
@@ -388,6 +416,7 @@ switch (stage){
     highHeat = 0;
   }
   digitalWrite(SSR, LOW);*/
+  maintainHeater();
   delay(5000);
   if (posB == true); //&& (subtemprature > 59.5 && subtemprature < 60.5))
   {
@@ -403,6 +432,8 @@ switch (stage){
   Serial.println("moving the fixture back to the original position (position B)");
   while (halt == 1)
   {
+    digitalWrite(SSR, HIGH);
+    hCheckTemperature();  
     posA = digitalRead(SMS1); // read sensor 1
     posB = digitalRead(SMS2); // read sensor 2
     if (posB == 0 && posA == 0)
@@ -425,6 +456,7 @@ switch (stage){
         }
       }
     }
+    digitalWrite(SSR,LOW);
     motor.step(dir);
   }
   if (posA == true); //&& (subtemprature > 59.5 && subtemprature < 60.5))
@@ -439,12 +471,13 @@ switch (stage){
   digitalWrite(valve,HIGH); 
   psi = digitalRead(pressureInput);
   Serial.println("waiting for vacuum to reach the proper PSI");
-  while (psi == false) // get the vacuum to the proper PSI
+  while (psi == true) // get the vacuum to the proper PSI
   {
     psi = digitalRead(pressureInput);
     delay(100);
   }
   delay(1000);
+  maintainHeater();
   // release clamps
   digitalWrite(clampSLpull, LOW);
   delay(100);
@@ -464,6 +497,7 @@ switch (stage){
     delay(100);
   }
   delay(1000);
+  maintainHeater();
   // raise fixture
   digitalWrite(solonoid2, LOW);
   delay(100);
@@ -477,6 +511,7 @@ switch (stage){
     delay(1000);
   }
   delay(1000);
+  maintainHeater();
   // close vaccuum 
   digitalWrite(valve,LOW); 
   psi = digitalRead(pressureInput);
@@ -486,6 +521,7 @@ switch (stage){
     psi = digitalRead(pressureInput);
     delay(100);
   }
+  maintainHeater();
   recieved = digitalRead(PES);
   Serial.println("waiting for substrate to be picked up by the EFM");
   while (recieved == false) // wait for the substrate to be taken out
@@ -498,6 +534,8 @@ switch (stage){
   stage = 1;
   break;
 }
+communicate = String(htemprature);
+Serial.println("the temperature is at " + communicate);
 delay(1000);
 
 }
