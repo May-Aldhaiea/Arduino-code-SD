@@ -10,6 +10,8 @@ const int PES = 8; // photoelectric sensor pin
 bool recieved = false; // checks if the substrate has been recieved 
 int substrateReady = 0; // checks if the substrate
 int Readinput; // read info into the GUI
+const int GUIRESET = 3; // reset pin for the arduino
+int pausing = 0; 
 
 // clamps pins
 const int clampSLpush = 25; // clamp push
@@ -77,9 +79,68 @@ float maxtemp = 40; // heat temperature for heater
 int32_t subProbeTemperature;
 uint8_t subFaultCode;*/
 
+void clampDebug()
+{
+  if(inputTime >= 8) //timer to switch which solonoid is active every 2 seconds
+  {
+      //digitalWrite(valve,HIGH);
+       if (clampCycle == false) // if this statement execute then push the solonoid
+       {
+         digitalWrite(clampSLpush, LOW);
+         delay(100);
+         digitalWrite(clampSLpull, HIGH);
+         CheckSolonoid = true;
+         repeat++;
+       }else if (clampCycle == true) // if this statement execute then pull the solonoid
+       {
+         digitalWrite(clampSLpull, LOW);
+         delay(100);
+         digitalWrite(clampSLpush, HIGH);
+         CheckSolonoid = false;
+         repeat++;
+       }
+    inputTime = 0;
+  }
+  if (repeat == 5)
+  {
+    return;
+  }
+  inputTime = inputTime + 1;
+  delay(250);
+}
+void pause()
+{
+  pausing = 1;
+  while (pausing == 1)
+  {
+    if (Serial.available() > 0)
+    {
+      Readinput = Serial.read();
+    }
+    switch(Readinput)
+    {
+  
+    }
+    Serial.flush();
+    delay(1000);
+  }
+}
+void readGUI()
+{
+  if (Serial.available() > 0)
+  {
+    Readinput = Serial.read();
+  }
+  switch(Readinput)
+  {
+
+  }
+  Serial.flush();
+}
 void setup() { // input for sensors, output for motors and control units
   Serial.begin(baudRate); //initializes serial communication at set baud rate bits per second
   pinMode(PES,INPUT); 
+  pinMode(GUIRESET, OUTPUT);
   // suction cup
   pinMode(solonoid1, OUTPUT); // suction cups
   pinMode(solonoid2, OUTPUT);// put your setup code here, to run once:
@@ -242,35 +303,6 @@ void maintainHeater()
     }
     digitalWrite(SSR,LOW);
 }
-void clampDebug()
-{
-  if(inputTime >= 8) //timer to switch which solonoid is active every 2 seconds
-  {
-      //digitalWrite(valve,HIGH);
-       if (clampCycle == false) // if this statement execute then push the solonoid
-       {
-         digitalWrite(clampSLpush, LOW);
-         delay(100);
-         digitalWrite(clampSLpull, HIGH);
-         CheckSolonoid = true;
-         repeat++;
-       }else if (clampCycle == true) // if this statement execute then pull the solonoid
-       {
-         digitalWrite(clampSLpull, LOW);
-         delay(100);
-         digitalWrite(clampSLpush, HIGH);
-         CheckSolonoid = false;
-         repeat++;
-       }
-    inputTime = 0;
-  }
-  if (repeat == 5)
-  {
-    return;
-  }
-  inputTime = inputTime + 1;
-  delay(250);
-}
 /*void subCheckTemperature()
 {
   subAmbientTemperature = subMAX31855.readAmbient(); // retrieve subMAX31855 die ambient temperature
@@ -292,6 +324,7 @@ void clampDebug()
 }*/
 void loop() {
   
+  readGUI();
   hCheckTemperature();
   //subCheckTemperature();
   posA = digitalRead(SMS1); // read sensor 1
