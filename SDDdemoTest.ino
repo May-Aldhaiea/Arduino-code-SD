@@ -208,6 +208,7 @@ switch (stage){
     Rclamps = digitalRead(NPN2);
     delay(100);
   }
+  delay(15000);
   // turn off the valve for the vacuum
   //digitalWrite(valve,LOW); 
   // vantage protocol
