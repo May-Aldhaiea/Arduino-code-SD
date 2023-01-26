@@ -6,4 +6,4 @@ a lead screw. the board is heated up to the desired tempurature using the GUI wh
 temprature is reached then the board is ready to be moved to the vantage. This Design consists of many sensors that help reduce the amount of errors that happen during 
 the automation process. the clamps and the suction help keep the PCB board intact and flat for the dispensing.
 
-Here is a diagram of the part of the machines and how they work: ![alt text](http://url/to/img.png)
+Here is a diagram of the part of the machines and how they work: ![alt text](https://raw.githubusercontent.com/May-Aldhaiea/Arduino-code-SD/main/five%20stage%20process.jpg)
